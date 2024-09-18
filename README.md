@@ -1,105 +1,66 @@
-# DNS Spoofer
+# ARP Spoofing and DNS Spoofing Script
 
-A Python-based DNS spoofing tool built using `scapy` and `netfilterqueue`. This tool allows you to spoof DNS responses to redirect users to a specific IP address. It works by intercepting and modifying DNS responses in a network.
+## Overview
 
-> **Warning**: This tool is intended for educational purposes only. Unauthorized use of this tool on networks you do not own or have permission to test is illegal and unethical. Use this tool responsibly in a controlled, authorized environment.
+This Python script is designed to perform ARP spoofing and DNS spoofing attacks using the `Scapy` library. The primary purpose of this tool is to intercept network traffic between a target device and its gateway (router) and perform DNS spoofing by redirecting specific domain requests to a fake IP address.
 
 ## Features
 
-- Captures DNS requests and spoofs the response for specified domains.
-- Redirects DNS queries for specific domains to a specified IP address.
-- Uses `netfilterqueue` to capture packets from a Linux-based firewall.
+- **ARP Spoofing**: The script deceives the target device and the gateway by sending them malicious ARP responses, making them believe that the attacker's machine is the other device.
+- **DNS Spoofing**: After ARP spoofing is established, DNS requests for a specific domain are intercepted and responded to with a fake IP address.
+- **MAC Address Discovery**: The script automatically retrieves the MAC addresses of the target and gateway using ARP requests.
 
-## Requirements
+## Prerequisites
 
-To run this tool, you need the following:
-
-- **Python 3.x**
-- **Linux-based system** (or virtual machine with Linux)
-- **`scapy`** for packet manipulation
-- **`netfilterqueue`** for capturing packets from the firewall
-
-### Install Dependencies
-
-1. Create a virtual environment and activate it:
-
-   ```bash
-   python3 -m venv env
-   source env/bin/activate
-   ```
-
-2. Install the required Python libraries:
-
-   ```bash
-   pip install scapy netfilterqueue
-   ```
+- Python 3.x
+- Scapy (Install via `pip install scapy`)
+- Administrative or root privileges (needed to send ARP packets)
 
 ## Usage
 
-1. **Set up `iptables` rules** on your Linux system to capture DNS packets and forward them to the `netfilterqueue`. Run the following commands:
+To run this script, you will need to provide the target IP address, gateway IP address, the domain you want to spoof, and the spoofed IP address (the IP address to which the domain will be redirected).
 
-   - Forward incoming packets to the queue:
-     ```bash
-     sudo iptables -I FORWARD -j NFQUEUE --queue-num 0
-     ```
+### Command Line Arguments
 
-   - Capture outgoing packets:
-     ```bash
-     sudo iptables -I OUTPUT -j NFQUEUE --queue-num 0
-     ```
+- `-t`, `--target-ip`: The IP address of the target device (victim).
+- `-g`, `--gateway-ip`: The IP address of the gateway (usually the router).
+- `-d`, `--domain`: The domain you want to spoof (e.g., `example.com`).
+- `-s`, `--spoof-ip`: The IP address to which the domain should be spoofed.
 
-   - Capture incoming packets:
-     ```bash
-     sudo iptables -I INPUT -j NFQUEUE --queue-num 0
-     ```
-
-2. **Run the Python script** with the target domains and spoofed IP addresses. Use the following command:
-
-   ```bash
-   sudo python3 dns_spoof.py -q 0 -t www.bing.com=10.0.2.16 www.example.com=10.0.2.17
-   ```
-
-   - Replace `www.bing.com` and `www.example.com` with the domains you want to spoof.
-   - Replace `10.0.2.16` and `10.0.2.17` with the IP addresses you want to redirect the domains to.
-
-3. **Flush `iptables` rules** after testing to ensure normal network traffic:
-
-   ```bash
-   sudo iptables --flush
-   ```
-
-## Example
-
-To spoof DNS responses for `www.bing.com` and `www.example.com`, redirecting them to the IP address `10.0.2.16`, use the following command:
+### Example Command
 
 ```bash
-sudo python3 dns_spoof.py -q 0 -t www.bing.com=10.0.2.16 www.example.com=10.0.2.17
+sudo python3 arp_dns_spoof.py -t 192.168.1.10 -g 192.168.1.1 -d example.com -s 192.168.1.100
 ```
 
-The tool will intercept DNS requests and respond with a spoofed IP address for these domains.
+### Execution Steps:
 
-### Output Example
+1. **ARP Spoofing**: The script will start ARP spoofing in the background by pretending to be the gateway for the target and vice versa.
+2. **DNS Spoofing**: The script sniffs DNS requests from the target and responds with the spoofed IP address if the domain matches.
 
-```
-[+] Spoofing DNS request for www.bing.com
-[+] Spoofing DNS request for www.example.com
-```
+## Script Breakdown
 
-## Legal Disclaimer
+- **get_mac(ip)**: Sends ARP requests to retrieve the MAC address of a given IP address.
+- **spoof_arp(target_ip, spoof_ip)**: Sends a malicious ARP response, tricking the target into thinking the attacker is the specified IP (either the gateway or the target).
+- **restore_arp(target_ip, gateway_ip)**: Restores the ARP tables of the target and gateway to their original state.
+- **spoof_dns(pkt, spoofed_ip, target_domain)**: Inspects DNS requests and sends a spoofed response with the fake IP if the request matches the target domain.
+- **packet_sniffer(spoofed_ip, target_domain)**: Sniffs DNS packets and applies the `spoof_dns` function to relevant traffic.
+- **arp_spoofing_attack(target_ip, gateway_ip)**: Continuously performs ARP spoofing between the target and the gateway.
 
-This tool is intended for **educational purposes only**. Unauthorized use of this tool on networks you do not own or have permission to test may violate laws and could result in severe consequences. Only use this tool in a legal, authorized environment.
+## Important Notes
+
+- This script is for educational purposes only. Unauthorized use of this script to attack networks or devices without consent is illegal and unethical.
+- Ensure you have explicit permission to perform these actions on the target network.
+  
+## Stopping the Attack
+
+To stop the script, press `CTRL+C`. The ARP tables will be restored to their original state to prevent disruption of the network.
+
+## Limitations
+
+- The script will only spoof a single domain.
+- It requires root privileges to send ARP and DNS packets.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-```
-
-### Key Sections:
-- **Introduction**: Describes what the tool does and emphasizes the legal disclaimer.
-- **Features**: Highlights the tool's core features.
-- **Requirements**: Lists Python 3.x, Linux, `scapy`, and `netfilterqueue` as necessary tools.
-- **Usage**: Explains how to set up `iptables` and run the Python script with target domains and IPs.
-- **Example**: Provides an example of how to run the script.
-- **Legal Disclaimer**: Warns about using the tool in a legal and ethical manner.
-- **License**: The MIT license gives users freedom to use and modify the code.
+This project is licensed under the MIT License. See the LICENSE file for details.
